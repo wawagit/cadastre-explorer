@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadastre Explorer</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; }
+
+  #map { width: 100%; height: 100vh; }
+
+  .panel {
+    position: absolute; top: 12px; left: 12px; z-index: 1000;
+    background: white; border-radius: 12px; padding: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12); width: 360px;
+    font-size: 14px; max-height: calc(100vh - 24px); overflow-y: auto;
+  }
+
+  .panel h1 { font-size: 18px; color: #0f172a; margin-bottom: 4px; }
+  .panel .subtitle { font-size: 12px; color: #94a3b8; margin-bottom: 16px; }
+
+  .section { margin-bottom: 16px; }
+  .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 8px; }
+
+  /* Tabs for data source */
+  .tabs { display: flex; gap: 0; margin-bottom: 12px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
+  .tab {
+    flex: 1; padding: 8px 12px; text-align: center; font-size: 13px; font-weight: 500;
+    cursor: pointer; background: #f8fafc; color: #64748b; transition: all 0.2s; border: none; font-family: inherit;
+  }
+  .tab.active { background: #2563eb; color: white; }
+  .tab:hover:not(.active) { background: #eff6ff; color: #2563eb; }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* API loader */
+  .api-row { display: flex; gap: 8px; }
+  .api-row input[type="text"] {
+    flex: 1; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px;
+    font-size: 14px; font-family: inherit; outline: none; transition: border 0.2s;
+  }
+  .api-row input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+  .btn-sm {
+    padding: 8px 14px; border: none; border-radius: 6px; font-size: 13px;
+    font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .btn-green { background: #16a34a; color: white; }
+  .btn-green:hover { background: #15803d; }
+  .btn-green:disabled { background: #94a3b8; cursor: not-allowed; }
+
+  .api-status {
+    margin-top: 8px; font-size: 12px; color: #64748b; display: none;
+  }
+  .api-status.visible { display: block; }
+  .api-progress {
+    height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 6px; overflow: hidden;
+  }
+  .api-progress-bar {
+    height: 100%; background: #2563eb; border-radius: 2px; transition: width 0.3s; width: 0%;
+  }
+
+  /* File drop */
+  .file-drop {
+    border: 2px dashed #cbd5e1; border-radius: 8px; padding: 16px;
+    text-align: center; cursor: pointer; transition: all 0.2s;
+    background: #f8fafc; color: #64748b; font-size: 13px;
+  }
+  .file-drop:hover, .file-drop.dragover { border-color: #3b82f6; background: #eff6ff; color: #3b82f6; }
+  .file-drop.loaded { border-color: #22c55e; background: #f0fdf4; color: #16a34a; }
+  .file-drop input { display: none; }
+
+  .range-row { display: flex; gap: 8px; align-items: center; }
+  .range-row input[type="number"] {
+    flex: 1; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px;
+    font-size: 14px; font-family: inherit; outline: none; transition: border 0.2s;
+    -moz-appearance: textfield;
+  }
+  .range-row input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+  .range-row input::-webkit-outer-spin-button,
+  .range-row input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .range-sep { color: #94a3b8; font-weight: 600; }
+
+  .highlight-row { display: flex; gap: 8px; }
+  .highlight-row input[type="number"] {
+    flex: 1; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px;
+    font-size: 14px; font-family: inherit; outline: none; transition: border 0.2s;
+    -moz-appearance: textfield;
+  }
+  .highlight-row input:focus { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.1); }
+  .highlight-row input::-webkit-outer-spin-button,
+  .highlight-row input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .btn {
+    display: block; width: 100%; padding: 10px; border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    font-family: inherit;
+  }
+  .btn-primary { background: #2563eb; color: white; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+
+  .stats {
+    background: #f1f5f9; border-radius: 8px; padding: 12px 14px;
+    display: none; font-size: 13px; color: #334155; line-height: 1.6;
+  }
+  .stats.visible { display: block; }
+  .stat-value { font-weight: 700; color: #0f172a; }
+  .stat-highlight { color: #dc2626; font-weight: 700; }
+
+  .legend { margin-top: 12px; font-size: 12px; color: #64748b; }
+  .legend-item { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+  .swatch-blue { background: rgba(59,130,246,0.4); border: 2px solid #2563eb; }
+  .swatch-red { background: rgba(239,68,68,0.45); border: 2px solid #dc2626; }
+
+  .results-list {
+    max-height: 200px; overflow-y: auto; margin-top: 12px;
+    border: 1px solid #e2e8f0; border-radius: 8px; display: none;
+  }
+  .results-list.visible { display: block; }
+  .results-list table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .results-list th {
+    position: sticky; top: 0; background: #f1f5f9; padding: 6px 8px;
+    text-align: left; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;
+  }
+  .results-list td { padding: 5px 8px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+  .results-list tr:hover td { background: #eff6ff; }
+  .results-list tr.highlighted td { background: #fef2f2; color: #dc2626; font-weight: 600; }
+  .results-list tr { cursor: pointer; }
+
+  .helper-text { font-size: 11px; color: #94a3b8; margin-top: 6px; }
+
+  /* Commune search */
+  .search-wrapper { position: relative; }
+  .search-wrapper input[type="text"] {
+    width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px;
+    font-size: 14px; font-family: inherit; outline: none; transition: border 0.2s;
+  }
+  .search-wrapper input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+  .search-dropdown {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 10;
+    background: white; border: 1px solid #e2e8f0; border-top: none;
+    border-radius: 0 0 8px 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    max-height: 200px; overflow-y: auto; display: none;
+  }
+  .search-dropdown.visible { display: block; }
+  .search-item {
+    padding: 8px 12px; cursor: pointer; font-size: 13px; color: #334155;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .search-item:hover { background: #eff6ff; }
+  .search-item .commune-name { font-weight: 500; }
+  .search-item .commune-meta { font-size: 11px; color: #94a3b8; }
+  .search-item .commune-cp { font-size: 12px; color: #64748b; }
+
+  .selected-commune {
+    display: none; margin-top: 8px; padding: 8px 12px;
+    background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px;
+    font-size: 13px; color: #16a34a;
+  }
+  .selected-commune.visible { display: flex; justify-content: space-between; align-items: center; }
+  .selected-commune .clear-btn {
+    background: none; border: none; color: #94a3b8; cursor: pointer;
+    font-size: 16px; padding: 0 4px; line-height: 1;
+  }
+  .selected-commune .clear-btn:hover { color: #ef4444; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="panel">
+  <h1>Cadastre Explorer</h1>
+  <p class="subtitle">Visualisation et filtrage de parcelles cadastrales</p>
+
+  <!-- Data source -->
+  <div class="section">
+    <div class="section-title">1. Source des donnees</div>
+    <div class="tabs">
+      <button class="tab active" data-tab="api">Commune</button>
+      <button class="tab" data-tab="file">Fichier JSON</button>
+    </div>
+
+    <div class="tab-content active" id="tab-api">
+      <div class="search-wrapper">
+        <input type="text" id="communeSearch" placeholder="Nom ou code postal (ex: Riantec, 56670)" autocomplete="off">
+        <div class="search-dropdown" id="searchDropdown"></div>
+      </div>
+      <div class="selected-commune" id="selectedCommune">
+        <span id="selectedCommuneText"></span>
+        <button class="clear-btn" id="clearCommune">&times;</button>
+      </div>
+      <div style="margin-top:10px;">
+        <button class="btn-sm btn-green" id="fetchBtn" disabled style="width:100%;padding:10px;border-radius:8px;font-size:14px;">Charger les parcelles</button>
+      </div>
+      <div class="api-status" id="apiStatus">
+        <span id="apiStatusText">Chargement...</span>
+        <div class="api-progress"><div class="api-progress-bar" id="apiProgressBar"></div></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-file">
+      <div class="file-drop" id="fileDrop">
+        <div id="fileLabel">Glisser un fichier .json ici<br>ou cliquer pour parcourir</div>
+        <input type="file" id="fileInput" accept=".json,.geojson">
+      </div>
+    </div>
+  </div>
+
+  <!-- Range filter -->
+  <div class="section">
+    <div class="section-title">2. Filtrer par surface (m&sup2;)</div>
+    <div class="range-row">
+      <input type="number" id="minSurface" placeholder="Min" value="1200">
+      <span class="range-sep">&ndash;</span>
+      <input type="number" id="maxSurface" placeholder="Max" value="1300">
+    </div>
+  </div>
+
+  <!-- Highlight -->
+  <div class="section">
+    <div class="section-title">3. Mettre en valeur une surface exacte (m&sup2;)</div>
+    <div class="highlight-row">
+      <input type="number" id="exactSurface" placeholder="Ex: 1225">
+    </div>
+  </div>
+
+  <!-- Apply -->
+  <div class="section">
+    <button class="btn btn-primary" id="applyBtn" disabled>Appliquer les filtres</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats" id="stats"></div>
+
+  <!-- Legend -->
+  <div class="legend" id="legend" style="display:none;">
+    <div class="legend-item"><div class="legend-swatch swatch-blue"></div> Parcelles dans l'intervalle</div>
+    <div class="legend-item" id="legendHighlight" style="display:none;"><div class="legend-swatch swatch-red"></div> <span id="legendHighlightText"></span></div>
+  </div>
+
+  <!-- Results table -->
+  <div class="results-list" id="resultsList">
+    <table>
+      <thead><tr><th>Section</th><th>N&deg;</th><th>Surface</th><th>IDU</th></tr></thead>
+      <tbody id="resultsBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+let rawData = null;
+let map, parcelLayer;
+let fetchAbort = null;
+
+// Init map
+map = L.map('map', { zoomControl: true }).setView([46.8, 2.3], 6);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: '\u00a9 <a href="https://carto.com/">CARTO</a> \u00a9 <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+  subdomains: 'abcd',
+  maxZoom: 20
+}).addTo(map);
+
+// ========== TABS ==========
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ========== COMMUNE SEARCH ==========
+const communeSearch = document.getElementById('communeSearch');
+const searchDropdown = document.getElementById('searchDropdown');
+const selectedCommuneEl = document.getElementById('selectedCommune');
+const selectedCommuneText = document.getElementById('selectedCommuneText');
+const clearCommuneBtn = document.getElementById('clearCommune');
+
+const GEO_API = 'https://geo.api.gouv.fr/communes';
+let selectedInsee = null;
+let searchTimeout = null;
+
+communeSearch.addEventListener('input', () => {
+  clearTimeout(searchTimeout);
+  const q = communeSearch.value.trim();
+  if (q.length < 2) { searchDropdown.classList.remove('visible'); return; }
+  searchTimeout = setTimeout(() => searchCommunes(q), 250);
+});
+
+communeSearch.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') searchDropdown.classList.remove('visible');
+});
+
+// Close dropdown on outside click
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-wrapper')) searchDropdown.classList.remove('visible');
+});
+
+async function searchCommunes(query) {
+  try {
+    const isPostal = /^\d{2,5}$/.test(query);
+    let url;
+    if (isPostal) {
+      url = GEO_API + '?codePostal=' + query + '&fields=nom,code,codesPostaux,departement,population&boost=population';
+    } else {
+      url = GEO_API + '?nom=' + encodeURIComponent(query) + '&fields=nom,code,codesPostaux,departement,population&boost=population&limit=8';
+    }
+    const resp = await fetch(url);
+    const communes = await resp.json();
+
+    searchDropdown.innerHTML = '';
+    if (communes.length === 0) {
+      searchDropdown.innerHTML = '<div style="padding:10px 12px;font-size:13px;color:#94a3b8;">Aucune commune trouvee</div>';
+    } else {
+      // Sort by population desc for relevance
+      communes.sort((a, b) => (b.population || 0) - (a.population || 0));
+      communes.slice(0, 10).forEach(c => {
+        const cp = (c.codesPostaux || []).join(', ');
+        const dept = c.departement ? c.departement.nom : '';
+        const item = document.createElement('div');
+        item.className = 'search-item';
+        item.innerHTML =
+          '<div><span class="commune-name">' + c.nom + '</span> <span class="commune-meta">(' + c.code + ')</span></div>' +
+          '<div><span class="commune-cp">' + cp + '</span></div>';
+        item.addEventListener('click', () => selectCommune(c));
+        searchDropdown.appendChild(item);
+      });
+    }
+    searchDropdown.classList.add('visible');
+  } catch (err) {
+    searchDropdown.innerHTML = '<div style="padding:10px 12px;font-size:13px;color:#ef4444;">Erreur de recherche</div>';
+    searchDropdown.classList.add('visible');
+  }
+}
+
+function selectCommune(commune) {
+  selectedInsee = commune.code;
+  const cp = (commune.codesPostaux || []).join(', ');
+  selectedCommuneText.innerHTML = '<strong>' + commune.nom + '</strong> - ' + cp + ' <span style="color:#94a3b8;">(INSEE: ' + commune.code + ')</span>';
+  selectedCommuneEl.classList.add('visible');
+  searchDropdown.classList.remove('visible');
+  communeSearch.value = '';
+  fetchBtn.disabled = false;
+}
+
+clearCommuneBtn.addEventListener('click', () => {
+  selectedInsee = null;
+  selectedCommuneEl.classList.remove('visible');
+  fetchBtn.disabled = true;
+  communeSearch.value = '';
+  communeSearch.focus();
+});
+
+// ========== API FETCH WITH PAGINATION ==========
+const fetchBtn = document.getElementById('fetchBtn');
+const apiStatus = document.getElementById('apiStatus');
+const apiStatusText = document.getElementById('apiStatusText');
+const apiProgressBar = document.getElementById('apiProgressBar');
+const applyBtn = document.getElementById('applyBtn');
+
+const WFS_BASE = 'https://data.geopf.fr/wfs/ow';
+const PAGE_SIZE = 1000;
+
+fetchBtn.addEventListener('click', fetchFromAPI);
+
+async function fetchFromAPI() {
+  const code = selectedInsee;
+  if (!code) {
+    apiStatusText.textContent = 'Veuillez selectionner une commune';
+    apiStatus.classList.add('visible');
+    return;
+  }
+
+  fetchBtn.disabled = true;
+  fetchBtn.textContent = '...';
+  apiStatus.classList.add('visible');
+  apiStatusText.textContent = 'Connexion au WFS...';
+  apiProgressBar.style.width = '0%';
+
+  try {
+    // First request to get totalFeatures
+    const firstUrl = buildWfsUrl(code, PAGE_SIZE, 0);
+    const firstResp = await fetch(firstUrl);
+    if (!firstResp.ok) throw new Error('Erreur HTTP ' + firstResp.status);
+    const firstData = await firstResp.json();
+
+    const total = firstData.totalFeatures || firstData.numberMatched || 0;
+    if (total === 0) {
+      apiStatusText.textContent = 'Aucune parcelle trouvee pour ' + code;
+      apiProgressBar.style.width = '100%';
+      fetchBtn.disabled = false;
+      fetchBtn.textContent = 'Charger';
+      return;
+    }
+
+    let allFeatures = firstData.features || [];
+    const returned = allFeatures.length;
+    apiStatusText.textContent = allFeatures.length + ' / ' + total.toLocaleString('fr-FR') + ' parcelles...';
+    apiProgressBar.style.width = Math.round((allFeatures.length / total) * 100) + '%';
+
+    // Paginate to get all remaining features
+    let startIndex = returned;
+    while (startIndex < total) {
+      const url = buildWfsUrl(code, PAGE_SIZE, startIndex);
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('Erreur HTTP ' + resp.status);
+      const data = await resp.json();
+      const features = data.features || [];
+      if (features.length === 0) break; // safety: avoid infinite loop
+      allFeatures = allFeatures.concat(features);
+      startIndex += features.length;
+
+      apiStatusText.textContent = allFeatures.length.toLocaleString('fr-FR') + ' / ' + total.toLocaleString('fr-FR') + ' parcelles...';
+      apiProgressBar.style.width = Math.round((allFeatures.length / total) * 100) + '%';
+    }
+
+    // Build rawData
+    rawData = { type: 'FeatureCollection', features: allFeatures };
+
+    const communeName = allFeatures[0]?.properties?.nom_com || code;
+    apiStatusText.textContent = '\u2705 ' + communeName + ' : ' + allFeatures.length.toLocaleString('fr-FR') + ' parcelles chargees';
+    apiProgressBar.style.width = '100%';
+    applyBtn.disabled = false;
+    applyFilters();
+
+  } catch (err) {
+    apiStatusText.textContent = '\u274c Erreur : ' + err.message;
+    apiProgressBar.style.width = '0%';
+  }
+
+  fetchBtn.disabled = false;
+  fetchBtn.textContent = 'Charger';
+}
+
+function buildWfsUrl(code, count, startIndex) {
+  const params = new URLSearchParams({
+    SERVICE: 'WFS',
+    VERSION: '2.0.0',
+    REQUEST: 'GetFeature',
+    TYPENAMES: 'CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle',
+    OUTPUTFORMAT: 'application/json',
+    COUNT: count,
+    STARTINDEX: startIndex,
+    CQL_FILTER: "code_insee='" + code + "'"
+  });
+  return WFS_BASE + '?' + params.toString();
+}
+
+// ========== FILE LOADING ==========
+const fileDrop = document.getElementById('fileDrop');
+const fileInput = document.getElementById('fileInput');
+const fileLabel = document.getElementById('fileLabel');
+
+fileDrop.addEventListener('click', () => fileInput.click());
+fileDrop.addEventListener('dragover', (e) => { e.preventDefault(); fileDrop.classList.add('dragover'); });
+fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('dragover'));
+fileDrop.addEventListener('drop', (e) => {
+  e.preventDefault();
+  fileDrop.classList.remove('dragover');
+  if (e.dataTransfer.files.length) loadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', (e) => { if (e.target.files.length) loadFile(e.target.files[0]); });
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      rawData = JSON.parse(e.target.result);
+      const count = rawData.features ? rawData.features.length : 0;
+      fileLabel.innerHTML = '\u2705 <strong>' + file.name + '</strong><br>' + count.toLocaleString('fr-FR') + ' parcelles charg\u00e9es';
+      fileDrop.classList.add('loaded');
+      applyBtn.disabled = false;
+      applyFilters();
+    } catch (err) {
+      fileLabel.innerHTML = '\u274c Erreur de lecture du fichier';
+      fileDrop.classList.remove('loaded');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ========== APPLY FILTERS ==========
+applyBtn.addEventListener('click', applyFilters);
+
+['minSurface', 'maxSurface', 'exactSurface'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && rawData) applyFilters();
+  });
+});
+
+function applyFilters() {
+  if (!rawData) return;
+
+  const minVal = parseInt(document.getElementById('minSurface').value) || 0;
+  const maxVal = parseInt(document.getElementById('maxSurface').value) || Infinity;
+  const exactVal = document.getElementById('exactSurface').value ? parseInt(document.getElementById('exactSurface').value) : null;
+
+  // Filter features
+  const filtered = rawData.features.filter(f => {
+    const c = f.properties.contenance || 0;
+    return c >= minVal && c <= maxVal;
+  });
+
+  const highlighted = exactVal !== null ? filtered.filter(f => f.properties.contenance === exactVal) : [];
+
+  // Update stats
+  const statsEl = document.getElementById('stats');
+  let statsHtml = 'Total parcelles : <span class="stat-value">' + rawData.features.length.toLocaleString('fr-FR') + '</span>';
+  statsHtml += '<br>Parcelles dans l\'intervalle : <span class="stat-value">' + filtered.length + '</span>';
+  if (exactVal !== null) {
+    statsHtml += '<br>Parcelles \u00e0 <span class="stat-highlight">' + exactVal.toLocaleString('fr-FR') + ' m\u00b2</span> : <span class="stat-highlight">' + highlighted.length + '</span>';
+  }
+  statsEl.innerHTML = statsHtml;
+  statsEl.classList.add('visible');
+
+  // Legend
+  document.getElementById('legend').style.display = 'block';
+  const legendH = document.getElementById('legendHighlight');
+  if (exactVal !== null && highlighted.length > 0) {
+    legendH.style.display = 'flex';
+    document.getElementById('legendHighlightText').textContent = exactVal.toLocaleString('fr-FR') + ' m\u00b2 exactement (\u00d7' + highlighted.length + ')';
+  } else {
+    legendH.style.display = 'none';
+  }
+
+  // Update map
+  if (parcelLayer) map.removeLayer(parcelLayer);
+
+  const geojson = { type: 'FeatureCollection', features: filtered };
+  const highlightedIdus = new Set(highlighted.map(f => f.properties.idu));
+
+  parcelLayer = L.geoJSON(geojson, {
+    style: function(feature) {
+      const isH = highlightedIdus.has(feature.properties.idu);
+      return {
+        color: isH ? '#dc2626' : '#2563eb',
+        weight: isH ? 3.5 : 2,
+        opacity: 0.9,
+        fillColor: isH ? '#ef4444' : '#3b82f6',
+        fillOpacity: isH ? 0.45 : 0.25
+      };
+    },
+    onEachFeature: function(feature, layer) {
+      const p = feature.properties;
+      const isH = highlightedIdus.has(p.idu);
+      const badge = isH
+        ? '<span style="display:inline-block;background:#fef2f2;color:#dc2626;font-size:11px;padding:2px 8px;border-radius:4px;margin-bottom:6px;">' + exactVal.toLocaleString('fr-FR') + ' m\u00b2</span><br>'
+        : '';
+
+      // Compute centroid from geometry coordinates
+      const coords = feature.geometry.coordinates;
+      let sumLat = 0, sumLng = 0, count = 0;
+      for (const poly of coords) {
+        for (const ring of poly) {
+          for (const pt of ring) {
+            sumLng += pt[0]; sumLat += pt[1]; count++;
+          }
+        }
+      }
+      const cLat = (sumLat / count).toFixed(6);
+      const cLng = (sumLng / count).toFixed(6);
+      const streetViewUrl = 'https://www.google.com/maps/@' + cLat + ',' + cLng + ',3a,75y,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192';
+
+      const popup = '<div style="font-family:-apple-system,sans-serif;min-width:200px;">' +
+        badge +
+        '<div style="font-weight:700;font-size:15px;margin-bottom:6px;color:#1a1a1a;">Section ' + p.section + ' - N\u00b0' + p.numero + '</div>' +
+        '<div style="font-size:13px;color:#555;line-height:1.6;">' +
+          '<strong>Surface :</strong> ' + (p.contenance || 0).toLocaleString('fr-FR') + ' m\u00b2<br>' +
+          '<strong>IDU :</strong> ' + p.idu + '<br>' +
+          '<strong>Commune :</strong> ' + (p.nom_com || '-') +
+        '</div>' +
+        '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e2e8f0;">' +
+          '<a href="' + streetViewUrl + '" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:13px;color:#2563eb;text-decoration:none;font-weight:500;">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><path d="M12 8v8"/><circle cx="12" cy="19" r="3"/><path d="M6.5 9L12 16l5.5-7"/></svg>' +
+            'Google Street View' +
+          '</a>' +
+        '</div>' +
+        '</div>';
+      layer.bindPopup(popup);
+      layer.on('mouseover', function() { this.setStyle({ fillOpacity: isH ? 0.7 : 0.5, weight: isH ? 5 : 4 }); });
+      layer.on('mouseout', function() { parcelLayer.resetStyle(this); });
+    }
+  }).addTo(map);
+
+  if (filtered.length > 0) {
+    map.fitBounds(parcelLayer.getBounds(), { padding: [40, 40] });
+  }
+
+  // Results table
+  const tbody = document.getElementById('resultsBody');
+  const listEl = document.getElementById('resultsList');
+  tbody.innerHTML = '';
+
+  const sorted = [...filtered].sort((a, b) => a.properties.contenance - b.properties.contenance);
+  sorted.forEach(f => {
+    const p = f.properties;
+    const isH = highlightedIdus.has(p.idu);
+    const tr = document.createElement('tr');
+    if (isH) tr.classList.add('highlighted');
+    tr.innerHTML = '<td>' + p.section + '</td><td>' + p.numero + '</td><td>' + (p.contenance || 0).toLocaleString('fr-FR') + '</td><td>' + p.idu + '</td>';
+    tr.addEventListener('click', () => {
+      parcelLayer.eachLayer(layer => {
+        if (layer.feature && layer.feature.properties.idu === p.idu) {
+          map.fitBounds(layer.getBounds(), { padding: [60, 60], maxZoom: 18 });
+          layer.openPopup();
+        }
+      });
+    });
+    tbody.appendChild(tr);
+  });
+
+  listEl.classList.toggle('visible', filtered.length > 0 && filtered.length <= 500);
+}
+</script>
+</body>
+</html>
