@@ -9,138 +9,103 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; }
-
   #map { width: 100%; height: 100vh; }
 
+  /* Panel */
   .panel {
     position: absolute; top: 12px; left: 12px; z-index: 1000;
-    background: white; border-radius: 12px; padding: 20px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.12); width: 360px;
-    font-size: 14px; max-height: calc(100vh - 24px); overflow-y: auto;
+    background: white; border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12); width: 360px;
+    font-size: 13px; max-height: calc(100vh - 24px); overflow-y: auto;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+  .panel.collapsed { transform: translateX(-100%); opacity: 0; pointer-events: none; }
+  .panel::-webkit-scrollbar { width: 5px; }
+  .panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+  /* Toggle button */
+  .panel-toggle {
+    position: absolute; z-index: 1001;
+    top: 12px; left: 12px;
+    width: 40px; height: 40px; border-radius: 10px;
+    background: white; border: none; cursor: pointer;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+    display: flex; align-items: center; justify-content: center;
+    transition: left 0.3s ease, background 0.2s;
+    color: #475569;
+  }
+  .panel-toggle:hover { background: #f1f5f9; }
+  .panel-toggle.shifted { left: 380px; }
+  .panel-toggle svg { width: 20px; height: 20px; }
+
+  /* Header */
+  .panel-header {
+    padding: 16px 18px 12px; border-bottom: 1px solid #f1f5f9;
+    position: sticky; top: 0; background: white; z-index: 2; border-radius: 12px 12px 0 0;
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+  .panel-header h1 { font-size: 17px; color: #0f172a; font-weight: 700; }
+  .panel-header .subtitle { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+  .panel-close {
+    background: none; border: none; cursor: pointer; color: #94a3b8;
+    padding: 2px; margin: -2px -4px 0 0; border-radius: 6px; transition: all 0.15s;
+    display: none;
+  }
+  .panel-close:hover { background: #f1f5f9; color: #475569; }
+
+  /* Mobile responsive */
+  @media (max-width: 480px) {
+    .panel {
+      width: calc(100% - 16px); left: 8px; top: 8px;
+      max-height: 70vh; border-radius: 10px;
+    }
+    .panel.collapsed { transform: translateY(-110%); }
+    .panel-toggle {
+      top: auto; bottom: 80px; left: 50%; transform: translateX(-50%);
+      width: 44px; height: 44px; border-radius: 22px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+    }
+    .panel-toggle.shifted { left: 50%; transform: translateX(-50%); }
+    .panel-close { display: block; }
   }
 
-  .panel h1 { font-size: 18px; color: #0f172a; margin-bottom: 4px; }
-  .panel .subtitle { font-size: 12px; color: #94a3b8; margin-bottom: 16px; }
-
-  .section { margin-bottom: 16px; }
-  .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 8px; }
-
-  /* Tabs for data source */
-  .tabs { display: flex; gap: 0; margin-bottom: 12px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
-  .tab {
-    flex: 1; padding: 8px 12px; text-align: center; font-size: 13px; font-weight: 500;
-    cursor: pointer; background: #f8fafc; color: #64748b; transition: all 0.2s; border: none; font-family: inherit;
+  /* Accordion sections */
+  .accordion { border-bottom: 1px solid #f1f5f9; }
+  .accordion:last-of-type { border-bottom: none; }
+  .accordion-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px; cursor: pointer; user-select: none;
+    transition: background 0.15s;
   }
-  .tab.active { background: #2563eb; color: white; }
-  .tab:hover:not(.active) { background: #eff6ff; color: #2563eb; }
-
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-
-  /* API loader */
-  .api-row { display: flex; gap: 8px; }
-  .api-row input[type="text"] {
-    flex: 1; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px;
-    font-size: 14px; font-family: inherit; outline: none; transition: border 0.2s;
+  .accordion-header:hover { background: #f8fafc; }
+  .accordion-title {
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.04em; color: #475569;
   }
-  .api-row input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
-  .btn-sm {
-    padding: 8px 14px; border: none; border-radius: 6px; font-size: 13px;
-    font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;
+  .accordion-badge {
+    font-size: 11px; color: #94a3b8; font-weight: 400; text-transform: none;
+    letter-spacing: 0; margin-left: 8px;
   }
-  .btn-green { background: #16a34a; color: white; }
-  .btn-green:hover { background: #15803d; }
-  .btn-green:disabled { background: #94a3b8; cursor: not-allowed; }
+  .accordion-chevron {
+    width: 18px; height: 18px; color: #94a3b8; transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  .accordion.open .accordion-chevron { transform: rotate(180deg); }
+  .accordion-body { display: none; padding: 0 18px 14px; }
+  .accordion.open .accordion-body { display: block; }
 
-  .api-status {
-    margin-top: 8px; font-size: 12px; color: #64748b; display: none;
-  }
-  .api-status.visible { display: block; }
-  .api-progress {
-    height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 6px; overflow: hidden;
-  }
-  .api-progress-bar {
-    height: 100%; background: #2563eb; border-radius: 2px; transition: width 0.3s; width: 0%;
-  }
-
-  /* File drop */
-  .file-drop {
-    border: 2px dashed #cbd5e1; border-radius: 8px; padding: 16px;
-    text-align: center; cursor: pointer; transition: all 0.2s;
-    background: #f8fafc; color: #64748b; font-size: 13px;
-  }
-  .file-drop:hover, .file-drop.dragover { border-color: #3b82f6; background: #eff6ff; color: #3b82f6; }
-  .file-drop.loaded { border-color: #22c55e; background: #f0fdf4; color: #16a34a; }
-  .file-drop input { display: none; }
-
-  .range-row { display: flex; gap: 8px; align-items: center; }
-  .range-row input[type="number"] {
-    flex: 1; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px;
-    font-size: 14px; font-family: inherit; outline: none; transition: border 0.2s;
-    -moz-appearance: textfield;
-  }
-  .range-row input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
-  .range-row input::-webkit-outer-spin-button,
-  .range-row input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-  .range-sep { color: #94a3b8; font-weight: 600; }
-
-  .highlight-row { display: flex; gap: 8px; }
-  .highlight-row input[type="number"] {
-    flex: 1; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px;
-    font-size: 14px; font-family: inherit; outline: none; transition: border 0.2s;
-    -moz-appearance: textfield;
-  }
-  .highlight-row input:focus { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.1); }
-  .highlight-row input::-webkit-outer-spin-button,
-  .highlight-row input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-
-  .btn {
-    display: block; width: 100%; padding: 10px; border: none; border-radius: 8px;
-    font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
-    font-family: inherit;
-  }
-  .btn-primary { background: #2563eb; color: white; }
-  .btn-primary:hover { background: #1d4ed8; }
-  .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
-
-  .stats {
-    background: #f1f5f9; border-radius: 8px; padding: 12px 14px;
-    display: none; font-size: 13px; color: #334155; line-height: 1.6;
-  }
-  .stats.visible { display: block; }
-  .stat-value { font-weight: 700; color: #0f172a; }
-  .stat-highlight { color: #dc2626; font-weight: 700; }
-
-  .legend { margin-top: 12px; font-size: 12px; color: #64748b; }
-  .legend-item { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
-  .legend-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
-  .swatch-blue { background: rgba(59,130,246,0.4); border: 2px solid #2563eb; }
-  .swatch-red { background: rgba(239,68,68,0.45); border: 2px solid #dc2626; }
-
-  .results-list {
-    max-height: 200px; overflow-y: auto; margin-top: 12px;
-    border: 1px solid #e2e8f0; border-radius: 8px; display: none;
-  }
-  .results-list.visible { display: block; }
-  .results-list table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .results-list th {
-    position: sticky; top: 0; background: #f1f5f9; padding: 6px 8px;
-    text-align: left; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;
-  }
-  .results-list td { padding: 5px 8px; border-bottom: 1px solid #f1f5f9; color: #334155; }
-  .results-list tr:hover td { background: #eff6ff; }
-  .results-list tr.highlighted td { background: #fef2f2; color: #dc2626; font-weight: 600; }
-  .results-list tr { cursor: pointer; }
-
-  .helper-text { font-size: 11px; color: #94a3b8; margin-top: 6px; }
-
-  /* Commune search */
-  .search-wrapper { position: relative; }
-  .search-wrapper input[type="text"] {
+  /* Inputs */
+  input[type="text"], input[type="number"], select {
     width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px;
-    font-size: 14px; font-family: inherit; outline: none; transition: border 0.2s;
+    font-size: 13px; font-family: inherit; outline: none; transition: border 0.2s;
+    background: white; color: #1e293b;
   }
-  .search-wrapper input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+  input:focus, select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.08); }
+  input[type="number"] { -moz-appearance: textfield; }
+  input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  /* Search dropdown */
+  .search-wrapper { position: relative; }
   .search-dropdown {
     position: absolute; top: 100%; left: 0; right: 0; z-index: 10;
     background: white; border: 1px solid #e2e8f0; border-top: none;
@@ -150,8 +115,7 @@
   .search-dropdown.visible { display: block; }
   .search-item {
     padding: 8px 12px; cursor: pointer; font-size: 13px; color: #334155;
-    display: flex; justify-content: space-between; align-items: center;
-    border-bottom: 1px solid #f1f5f9;
+    display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9;
   }
   .search-item:hover { background: #eff6ff; }
   .search-item .commune-name { font-weight: 500; }
@@ -160,33 +124,131 @@
 
   .selected-commune {
     display: none; margin-top: 8px; padding: 8px 12px;
-    background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px;
-    font-size: 13px; color: #16a34a;
+    background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 13px; color: #16a34a;
   }
   .selected-commune.visible { display: flex; justify-content: space-between; align-items: center; }
-  .selected-commune .clear-btn {
-    background: none; border: none; color: #94a3b8; cursor: pointer;
-    font-size: 16px; padding: 0 4px; line-height: 1;
-  }
+  .selected-commune .clear-btn { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px; padding: 0 4px; line-height: 1; }
   .selected-commune .clear-btn:hover { color: #ef4444; }
+
+  /* Buttons */
+  .btn {
+    display: block; width: 100%; padding: 9px; border: none; border-radius: 7px;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit;
+  }
+  .btn-primary { background: #2563eb; color: white; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; }
+  .btn-green { background: #16a34a; color: white; }
+  .btn-green:hover { background: #15803d; }
+  .btn-green:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+  /* Status / progress */
+  .api-status { margin-top: 8px; font-size: 12px; color: #64748b; display: none; }
+  .api-status.visible { display: block; }
+  .api-progress { height: 3px; background: #e2e8f0; border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .api-progress-bar { height: 100%; background: #2563eb; border-radius: 2px; transition: width 0.3s; width: 0%; }
+
+  /* Range rows */
+  .range-row { display: flex; gap: 8px; align-items: center; }
+  .range-row input { flex: 1; }
+  .range-sep { color: #94a3b8; font-weight: 600; font-size: 12px; }
+  .field-label { font-size: 11px; color: #64748b; margin-bottom: 4px; font-weight: 500; }
+  .field-group { margin-bottom: 10px; }
+  .field-group:last-child { margin-bottom: 0; }
+
+  /* Toggle rows */
+  .toggle-row {
+    display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; color: #334155;
+  }
+  .toggle-row input[type="checkbox"] { accent-color: #2563eb; width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; }
+  .toggle-row label { cursor: pointer; flex: 1; font-weight: 500; }
+  .toggle-row .toggle-status { font-size: 11px; color: #94a3b8; }
+
+  /* Bati sub-filters */
+  .bati-filters {
+    display: none; margin-top: 10px; padding: 10px 12px;
+    background: #faf5ff; border: 1px solid #ede9fe; border-radius: 8px;
+  }
+  .bati-filters.visible { display: block; }
+  .bati-filters .field-label { color: #6d28d9; }
+  .btn-violet { background: #7c3aed; color: white; }
+  .btn-violet:hover { background: #6d28d9; }
+
+  /* Stats */
+  .stats-bar {
+    display: none; padding: 10px 18px;
+    background: #f8fafc; font-size: 12px; color: #475569; line-height: 1.7;
+    border-top: 1px solid #f1f5f9;
+  }
+  .stats-bar.visible { display: block; }
+  .stat-value { font-weight: 700; color: #0f172a; }
+  .stat-highlight { color: #dc2626; font-weight: 700; }
+
+  /* Legend */
+  .legend { padding: 8px 18px 6px; font-size: 11px; color: #64748b; display: none; }
+  .legend.visible { display: block; }
+  .legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .swatch-blue { background: rgba(59,130,246,0.4); border: 2px solid #2563eb; }
+  .swatch-red { background: rgba(239,68,68,0.45); border: 2px solid #dc2626; }
+  .swatch-plu-u { background: rgba(251,191,36,0.4); border: 2px solid #d97706; }
+  .swatch-plu-au { background: rgba(249,115,22,0.4); border: 2px solid #c2410c; }
+  .swatch-plu-a { background: rgba(132,204,22,0.4); border: 2px solid #4d7c0f; }
+  .swatch-plu-n { background: rgba(34,197,94,0.4); border: 2px solid #15803d; }
+  .swatch-bati { background: rgba(139,92,246,0.35); border: 2px solid #7c3aed; }
+
+  /* Results table */
+  .results-list { max-height: 180px; overflow-y: auto; border-top: 1px solid #e2e8f0; display: none; }
+  .results-list.visible { display: block; }
+  .results-list table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .results-list th {
+    position: sticky; top: 0; background: #f1f5f9; padding: 5px 8px;
+    text-align: left; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;
+  }
+  .results-list td { padding: 4px 8px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+  .results-list tr:hover td { background: #eff6ff; }
+  .results-list tr.highlighted td { background: #fef2f2; color: #dc2626; font-weight: 600; }
+  .results-list tr { cursor: pointer; }
+
+  /* Popup links */
+  .popup-links { margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 4px; }
+  .popup-links a {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; color: #2563eb; text-decoration: none; font-weight: 500;
+  }
+  .popup-links a:hover { text-decoration: underline; }
+
+  /* Divider */
+  .section-divider { height: 1px; background: #f1f5f9; margin: 8px 0; }
 </style>
 </head>
 <body>
 <div id="map"></div>
 
-<div class="panel">
-  <h1>Cadastre Explorer</h1>
-  <p class="subtitle">Visualisation et filtrage de parcelles cadastrales</p>
+<!-- Toggle button (visible when panel is collapsed, or on mobile always) -->
+<button class="panel-toggle shifted" id="panelToggle" title="Ouvrir/fermer le panneau">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
 
-  <!-- Data source -->
-  <div class="section">
-    <div class="section-title">1. Source des donnees</div>
-    <div class="tabs">
-      <button class="tab active" data-tab="api">Commune</button>
-      <button class="tab" data-tab="file">Fichier JSON</button>
+<div class="panel" id="panel">
+  <!-- Header -->
+  <div class="panel-header">
+    <div>
+      <h1>Cadastre Explorer</h1>
+      <div class="subtitle">Recherche et filtrage de parcelles cadastrales</div>
     </div>
+    <button class="panel-close" id="panelClose" title="Fermer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
 
-    <div class="tab-content active" id="tab-api">
+  <!-- 1. Commune search (always open) -->
+  <div class="accordion open" id="acc-commune">
+    <div class="accordion-header" onclick="toggleAccordion('acc-commune')">
+      <span class="accordion-title">Commune</span>
+      <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="accordion-body">
       <div class="search-wrapper">
         <input type="text" id="communeSearch" placeholder="Nom ou code postal (ex: Riantec, 56670)" autocomplete="off">
         <div class="search-dropdown" id="searchDropdown"></div>
@@ -196,52 +258,127 @@
         <button class="clear-btn" id="clearCommune">&times;</button>
       </div>
       <div style="margin-top:10px;">
-        <button class="btn-sm btn-green" id="fetchBtn" disabled style="width:100%;padding:10px;border-radius:8px;font-size:14px;">Charger les parcelles</button>
+        <button class="btn btn-green" id="fetchBtn" disabled>Charger les parcelles</button>
       </div>
       <div class="api-status" id="apiStatus">
         <span id="apiStatusText">Chargement...</span>
         <div class="api-progress"><div class="api-progress-bar" id="apiProgressBar"></div></div>
       </div>
     </div>
+  </div>
 
-    <div class="tab-content" id="tab-file">
-      <div class="file-drop" id="fileDrop">
-        <div id="fileLabel">Glisser un fichier .json ici<br>ou cliquer pour parcourir</div>
-        <input type="file" id="fileInput" accept=".json,.geojson">
+  <!-- 2. Parcelle filters -->
+  <div class="accordion open" id="acc-parcelles">
+    <div class="accordion-header" onclick="toggleAccordion('acc-parcelles')">
+      <span class="accordion-title">Filtres parcelles <span class="accordion-badge" id="parcelleBadge"></span></span>
+      <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="accordion-body">
+      <div class="field-group">
+        <div class="field-label">Intervalle de surface (m&sup2;)</div>
+        <div class="range-row">
+          <input type="number" id="minSurface" placeholder="Min" value="1200">
+          <span class="range-sep">&ndash;</span>
+          <input type="number" id="maxSurface" placeholder="Max" value="1300">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Mettre en valeur une surface exacte (m&sup2;)</div>
+        <input type="number" id="exactSurface" placeholder="Ex: 1225">
+      </div>
+      <div style="margin-top:12px;">
+        <button class="btn btn-primary" id="applyBtn" disabled>Appliquer les filtres</button>
       </div>
     </div>
   </div>
 
-  <!-- Range filter -->
-  <div class="section">
-    <div class="section-title">2. Filtrer par surface (m&sup2;)</div>
-    <div class="range-row">
-      <input type="number" id="minSurface" placeholder="Min" value="1200">
-      <span class="range-sep">&ndash;</span>
-      <input type="number" id="maxSurface" placeholder="Max" value="1300">
+  <!-- 3. Overlays -->
+  <div class="accordion" id="acc-overlays">
+    <div class="accordion-header" onclick="toggleAccordion('acc-overlays')">
+      <span class="accordion-title">Couches carte</span>
+      <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
-  </div>
+    <div class="accordion-body">
+      <!-- PLU -->
+      <div class="toggle-row">
+        <input type="checkbox" id="togglePLU">
+        <label for="togglePLU">Zones PLU (urbanisme)</label>
+        <span class="toggle-status" id="pluStatus"></span>
+      </div>
 
-  <!-- Highlight -->
-  <div class="section">
-    <div class="section-title">3. Mettre en valeur une surface exacte (m&sup2;)</div>
-    <div class="highlight-row">
-      <input type="number" id="exactSurface" placeholder="Ex: 1225">
+      <div class="section-divider"></div>
+
+      <!-- Bati -->
+      <div class="toggle-row">
+        <input type="checkbox" id="toggleBati">
+        <label for="toggleBati">Batiments</label>
+        <span class="toggle-status" id="batiStatus"></span>
+      </div>
+
+      <!-- Bati sub-filters -->
+      <div class="bati-filters" id="batiFilterSection">
+        <div class="field-group">
+          <div class="field-label">Emprise au sol (m&sup2;)</div>
+          <div class="range-row">
+            <input type="number" id="minBati" placeholder="Min">
+            <span class="range-sep">&ndash;</span>
+            <input type="number" id="maxBati" placeholder="Max">
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Usage</div>
+          <select id="filterUsage">
+            <option value="">Tous</option>
+            <option value="R&eacute;sidentiel">Residentiel</option>
+            <option value="Annexe">Annexe</option>
+            <option value="Indiff&eacute;renci&eacute;">Indifferencie</option>
+            <option value="Agricole">Agricole</option>
+            <option value="Commercial et services">Commercial et services</option>
+            <option value="Industriel">Industriel</option>
+            <option value="Sportif">Sportif</option>
+            <option value="Religieux">Religieux</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Nombre d'etages</div>
+          <div class="range-row">
+            <input type="number" id="minEtages" placeholder="Min">
+            <span class="range-sep">&ndash;</span>
+            <input type="number" id="maxEtages" placeholder="Max">
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Nombre de logements</div>
+          <div class="range-row">
+            <input type="number" id="minLogements" placeholder="Min">
+            <span class="range-sep">&ndash;</span>
+            <input type="number" id="maxLogements" placeholder="Max">
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Construction legere</div>
+          <select id="filterLegere">
+            <option value="">Tous</option>
+            <option value="false">Non (en dur)</option>
+            <option value="true">Oui (legere)</option>
+          </select>
+        </div>
+        <div style="margin-top:10px;">
+          <button class="btn btn-violet" id="applyBatiFilter">Appliquer filtres batiments</button>
+        </div>
+      </div>
     </div>
-  </div>
-
-  <!-- Apply -->
-  <div class="section">
-    <button class="btn btn-primary" id="applyBtn" disabled>Appliquer les filtres</button>
   </div>
 
   <!-- Stats -->
-  <div class="stats" id="stats"></div>
+  <div class="stats-bar" id="stats"></div>
 
   <!-- Legend -->
-  <div class="legend" id="legend" style="display:none;">
+  <div class="legend" id="legend">
     <div class="legend-item"><div class="legend-swatch swatch-blue"></div> Parcelles dans l'intervalle</div>
     <div class="legend-item" id="legendHighlight" style="display:none;"><div class="legend-swatch swatch-red"></div> <span id="legendHighlightText"></span></div>
+    <div class="legend-item" id="legendPLU" style="display:none;"><div class="legend-swatch swatch-plu-u"></div> U &nbsp;<div class="legend-swatch swatch-plu-au"></div> AU &nbsp;<div class="legend-swatch swatch-plu-a"></div> A &nbsp;<div class="legend-swatch swatch-plu-n"></div> N</div>
+    <div class="legend-item" id="legendBati" style="display:none;"><div class="legend-swatch swatch-bati"></div> Batiments</div>
   </div>
 
   <!-- Results table -->
@@ -254,27 +391,62 @@
 </div>
 
 <script>
+// ========== GLOBALS ==========
 let rawData = null;
-let map, parcelLayer;
-let fetchAbort = null;
+let map, parcelLayer, pluLayer, batiLayer;
+let selectedInsee = null;
+let searchTimeout = null;
+let cachedBati = null;
+let currentBbox = null;
 
-// Init map
-map = L.map('map', { zoomControl: true }).setView([46.8, 2.3], 6);
+const WFS_CADASTRE = 'https://data.geopf.fr/wfs/ow';
+const WFS_GPU = 'https://data.geopf.fr/wfs/wfs';
+const GEO_API = 'https://geo.api.gouv.fr/communes';
+const PAGE_SIZE = 1000;
+
+const PLU_COLORS = {
+  'U':  { fill: '#fbbf24', stroke: '#d97706', label: 'Urbaine' },
+  'AU': { fill: '#f97316', stroke: '#c2410c', label: 'A Urbaniser' },
+  'A':  { fill: '#84cc16', stroke: '#4d7c0f', label: 'Agricole' },
+  'N':  { fill: '#22c55e', stroke: '#15803d', label: 'Naturelle' },
+};
+
+// ========== ACCORDION ==========
+function toggleAccordion(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+// ========== INIT MAP ==========
+map = L.map('map', { zoomControl: false }).setView([46.8, 2.3], 6);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
   attribution: '\u00a9 <a href="https://carto.com/">CARTO</a> \u00a9 <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-  subdomains: 'abcd',
-  maxZoom: 20
+  subdomains: 'abcd', maxZoom: 20
 }).addTo(map);
 
-// ========== TABS ==========
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
-  });
+// ========== PANEL TOGGLE ==========
+const panel = document.getElementById('panel');
+const panelToggle = document.getElementById('panelToggle');
+const panelClose = document.getElementById('panelClose');
+
+function setPanelOpen(open) {
+  panel.classList.toggle('collapsed', !open);
+  panelToggle.classList.toggle('shifted', open);
+  // On mobile, hide the toggle when panel is open (use close button instead)
+  if (window.innerWidth <= 480) {
+    panelToggle.style.display = open ? 'none' : 'flex';
+  }
+}
+
+panelToggle.addEventListener('click', () => {
+  const isCollapsed = panel.classList.contains('collapsed');
+  setPanelOpen(isCollapsed);
 });
+
+panelClose.addEventListener('click', () => setPanelOpen(false));
+
+// Start with panel open
+setPanelOpen(true);
 
 // ========== COMMUNE SEARCH ==========
 const communeSearch = document.getElementById('communeSearch');
@@ -283,25 +455,14 @@ const selectedCommuneEl = document.getElementById('selectedCommune');
 const selectedCommuneText = document.getElementById('selectedCommuneText');
 const clearCommuneBtn = document.getElementById('clearCommune');
 
-const GEO_API = 'https://geo.api.gouv.fr/communes';
-let selectedInsee = null;
-let searchTimeout = null;
-
 communeSearch.addEventListener('input', () => {
   clearTimeout(searchTimeout);
   const q = communeSearch.value.trim();
   if (q.length < 2) { searchDropdown.classList.remove('visible'); return; }
   searchTimeout = setTimeout(() => searchCommunes(q), 250);
 });
-
-communeSearch.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') searchDropdown.classList.remove('visible');
-});
-
-// Close dropdown on outside click
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('.search-wrapper')) searchDropdown.classList.remove('visible');
-});
+communeSearch.addEventListener('keydown', (e) => { if (e.key === 'Escape') searchDropdown.classList.remove('visible'); });
+document.addEventListener('click', (e) => { if (!e.target.closest('.search-wrapper')) searchDropdown.classList.remove('visible'); });
 
 async function searchCommunes(query) {
   try {
@@ -314,21 +475,16 @@ async function searchCommunes(query) {
     }
     const resp = await fetch(url);
     const communes = await resp.json();
-
     searchDropdown.innerHTML = '';
     if (communes.length === 0) {
       searchDropdown.innerHTML = '<div style="padding:10px 12px;font-size:13px;color:#94a3b8;">Aucune commune trouvee</div>';
     } else {
-      // Sort by population desc for relevance
       communes.sort((a, b) => (b.population || 0) - (a.population || 0));
       communes.slice(0, 10).forEach(c => {
         const cp = (c.codesPostaux || []).join(', ');
-        const dept = c.departement ? c.departement.nom : '';
         const item = document.createElement('div');
         item.className = 'search-item';
-        item.innerHTML =
-          '<div><span class="commune-name">' + c.nom + '</span> <span class="commune-meta">(' + c.code + ')</span></div>' +
-          '<div><span class="commune-cp">' + cp + '</span></div>';
+        item.innerHTML = '<div><span class="commune-name">' + c.nom + '</span> <span class="commune-meta">(' + c.code + ')</span></div><div><span class="commune-cp">' + cp + '</span></div>';
         item.addEventListener('click', () => selectCommune(c));
         searchDropdown.appendChild(item);
       });
@@ -358,141 +514,368 @@ clearCommuneBtn.addEventListener('click', () => {
   communeSearch.focus();
 });
 
-// ========== API FETCH WITH PAGINATION ==========
+// ========== GENERIC WFS PAGINATED FETCH ==========
+async function fetchAllWFS(baseUrl, typeName, cqlFilter, onProgress) {
+  let allFeatures = [];
+  let startIndex = 0;
+  let total = null;
+
+  while (true) {
+    const params = new URLSearchParams({
+      SERVICE: 'WFS', VERSION: '2.0.0', REQUEST: 'GetFeature',
+      TYPENAMES: typeName, OUTPUTFORMAT: 'application/json',
+      COUNT: PAGE_SIZE, STARTINDEX: startIndex, CQL_FILTER: cqlFilter
+    });
+    const resp = await fetch(baseUrl + '?' + params.toString());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+
+    if (total === null) total = data.totalFeatures || data.numberMatched || 0;
+    const features = data.features || [];
+    if (features.length === 0) break;
+
+    allFeatures = allFeatures.concat(features);
+    startIndex += features.length;
+    if (onProgress) onProgress(allFeatures.length, total);
+    if (startIndex >= total) break;
+  }
+  return { features: allFeatures, total: total };
+}
+
+async function fetchWFSBbox(baseUrl, typeName, bbox, maxCount, useUrn) {
+  maxCount = maxCount || 5000;
+  const crs = useUrn ? 'urn:ogc:def:crs:EPSG::4326' : 'EPSG:4326';
+  const params = new URLSearchParams({
+    SERVICE: 'WFS', VERSION: '2.0.0', REQUEST: 'GetFeature',
+    TYPENAMES: typeName, OUTPUTFORMAT: 'application/json',
+    COUNT: maxCount, BBOX: bbox + ',' + crs
+  });
+  if (useUrn) params.set('SRSNAME', crs);
+  const resp = await fetch(baseUrl + '?' + params.toString());
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  return resp.json();
+}
+
+// ========== PARCELLE FETCH ==========
 const fetchBtn = document.getElementById('fetchBtn');
 const apiStatus = document.getElementById('apiStatus');
 const apiStatusText = document.getElementById('apiStatusText');
 const apiProgressBar = document.getElementById('apiProgressBar');
 const applyBtn = document.getElementById('applyBtn');
 
-const WFS_BASE = 'https://data.geopf.fr/wfs/ow';
-const PAGE_SIZE = 1000;
+fetchBtn.addEventListener('click', fetchParcelles);
 
-fetchBtn.addEventListener('click', fetchFromAPI);
-
-async function fetchFromAPI() {
+async function fetchParcelles() {
   const code = selectedInsee;
-  if (!code) {
-    apiStatusText.textContent = 'Veuillez selectionner une commune';
-    apiStatus.classList.add('visible');
-    return;
-  }
+  if (!code) { showApiStatus('Veuillez selectionner une commune'); return; }
 
   fetchBtn.disabled = true;
-  fetchBtn.textContent = '...';
-  apiStatus.classList.add('visible');
-  apiStatusText.textContent = 'Connexion au WFS...';
+  fetchBtn.textContent = 'Chargement...';
+  showApiStatus('Connexion au WFS...');
   apiProgressBar.style.width = '0%';
 
   try {
-    // First request to get totalFeatures
-    const firstUrl = buildWfsUrl(code, PAGE_SIZE, 0);
-    const firstResp = await fetch(firstUrl);
-    if (!firstResp.ok) throw new Error('Erreur HTTP ' + firstResp.status);
-    const firstData = await firstResp.json();
+    const result = await fetchAllWFS(
+      WFS_CADASTRE,
+      'CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle',
+      "code_insee='" + code + "'",
+      (loaded, total) => {
+        showApiStatus(loaded.toLocaleString('fr-FR') + ' / ' + total.toLocaleString('fr-FR') + ' parcelles...');
+        apiProgressBar.style.width = Math.round((loaded / total) * 100) + '%';
+      }
+    );
 
-    const total = firstData.totalFeatures || firstData.numberMatched || 0;
-    if (total === 0) {
-      apiStatusText.textContent = 'Aucune parcelle trouvee pour ' + code;
+    if (result.total === 0) {
+      showApiStatus('Aucune parcelle trouvee pour ' + code);
       apiProgressBar.style.width = '100%';
-      fetchBtn.disabled = false;
-      fetchBtn.textContent = 'Charger';
-      return;
+      fetchBtn.disabled = false; fetchBtn.textContent = 'Charger les parcelles'; return;
     }
 
-    let allFeatures = firstData.features || [];
-    const returned = allFeatures.length;
-    apiStatusText.textContent = allFeatures.length + ' / ' + total.toLocaleString('fr-FR') + ' parcelles...';
-    apiProgressBar.style.width = Math.round((allFeatures.length / total) * 100) + '%';
+    rawData = { type: 'FeatureCollection', features: result.features };
+    cachedBati = null;
 
-    // Paginate to get all remaining features
-    let startIndex = returned;
-    while (startIndex < total) {
-      const url = buildWfsUrl(code, PAGE_SIZE, startIndex);
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error('Erreur HTTP ' + resp.status);
-      const data = await resp.json();
-      const features = data.features || [];
-      if (features.length === 0) break; // safety: avoid infinite loop
-      allFeatures = allFeatures.concat(features);
-      startIndex += features.length;
-
-      apiStatusText.textContent = allFeatures.length.toLocaleString('fr-FR') + ' / ' + total.toLocaleString('fr-FR') + ' parcelles...';
-      apiProgressBar.style.width = Math.round((allFeatures.length / total) * 100) + '%';
-    }
-
-    // Build rawData
-    rawData = { type: 'FeatureCollection', features: allFeatures };
-
-    const communeName = allFeatures[0]?.properties?.nom_com || code;
-    apiStatusText.textContent = '\u2705 ' + communeName + ' : ' + allFeatures.length.toLocaleString('fr-FR') + ' parcelles chargees';
+    const communeName = result.features[0]?.properties?.nom_com || code;
+    showApiStatus('\u2705 ' + communeName + ' : ' + result.features.length.toLocaleString('fr-FR') + ' parcelles');
     apiProgressBar.style.width = '100%';
     applyBtn.disabled = false;
     applyFilters();
-
   } catch (err) {
-    apiStatusText.textContent = '\u274c Erreur : ' + err.message;
+    showApiStatus('\u274c Erreur : ' + err.message);
     apiProgressBar.style.width = '0%';
   }
-
-  fetchBtn.disabled = false;
-  fetchBtn.textContent = 'Charger';
+  fetchBtn.disabled = false; fetchBtn.textContent = 'Charger les parcelles';
 }
 
-function buildWfsUrl(code, count, startIndex) {
-  const params = new URLSearchParams({
-    SERVICE: 'WFS',
-    VERSION: '2.0.0',
-    REQUEST: 'GetFeature',
-    TYPENAMES: 'CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle',
-    OUTPUTFORMAT: 'application/json',
-    COUNT: count,
-    STARTINDEX: startIndex,
-    CQL_FILTER: "code_insee='" + code + "'"
-  });
-  return WFS_BASE + '?' + params.toString();
+function showApiStatus(text) {
+  apiStatusText.textContent = text;
+  apiStatus.classList.add('visible');
 }
 
-// ========== FILE LOADING ==========
-const fileDrop = document.getElementById('fileDrop');
-const fileInput = document.getElementById('fileInput');
-const fileLabel = document.getElementById('fileLabel');
+// ========== PLU OVERLAY ==========
+const togglePLU = document.getElementById('togglePLU');
+const pluStatus = document.getElementById('pluStatus');
 
-fileDrop.addEventListener('click', () => fileInput.click());
-fileDrop.addEventListener('dragover', (e) => { e.preventDefault(); fileDrop.classList.add('dragover'); });
-fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('dragover'));
-fileDrop.addEventListener('drop', (e) => {
-  e.preventDefault();
-  fileDrop.classList.remove('dragover');
-  if (e.dataTransfer.files.length) loadFile(e.dataTransfer.files[0]);
+togglePLU.addEventListener('change', async () => {
+  if (togglePLU.checked) {
+    await loadPLU();
+  } else {
+    if (pluLayer) { map.removeLayer(pluLayer); pluLayer = null; }
+    pluStatus.textContent = '';
+    document.getElementById('legendPLU').style.display = 'none';
+  }
 });
-fileInput.addEventListener('change', (e) => { if (e.target.files.length) loadFile(e.target.files[0]); });
 
-function loadFile(file) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      rawData = JSON.parse(e.target.result);
-      const count = rawData.features ? rawData.features.length : 0;
-      fileLabel.innerHTML = '\u2705 <strong>' + file.name + '</strong><br>' + count.toLocaleString('fr-FR') + ' parcelles charg\u00e9es';
-      fileDrop.classList.add('loaded');
-      applyBtn.disabled = false;
-      applyFilters();
-    } catch (err) {
-      fileLabel.innerHTML = '\u274c Erreur de lecture du fichier';
-      fileDrop.classList.remove('loaded');
+async function loadPLU() {
+  if (!rawData || !rawData.features.length) { pluStatus.textContent = 'Chargez d\'abord'; togglePLU.checked = false; return; }
+  pluStatus.textContent = 'Chargement...';
+
+  try {
+    const bbox = getBboxFromFeatures(rawData.features);
+    const params = new URLSearchParams({
+      SERVICE: 'WFS', VERSION: '2.0.0', REQUEST: 'GetFeature',
+      TYPENAMES: 'wfs_du:zone_urba', OUTPUTFORMAT: 'application/json',
+      SRSNAME: 'urn:ogc:def:crs:EPSG::4326',
+      COUNT: 5000, sortBy: 'gid',
+      BBOX: bbox.latlon + ',urn:ogc:def:crs:EPSG::4326'
+    });
+    const resp = await fetch(WFS_GPU + '?' + params.toString());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const contentType = resp.headers.get('content-type') || '';
+    if (!contentType.includes('json')) {
+      const text = await resp.text();
+      throw new Error('Reponse non-JSON du serveur GPU');
     }
+    const data = await resp.json();
+    const features = data.features || [];
+
+    if (pluLayer) map.removeLayer(pluLayer);
+    pluLayer = L.geoJSON({ type: 'FeatureCollection', features: features }, {
+      style: function(feature) {
+        const typezone = (feature.properties.typezone || '').toUpperCase();
+        const color = PLU_COLORS[typezone] || { fill: '#94a3b8', stroke: '#64748b' };
+        return { color: color.stroke, weight: 1.5, opacity: 0.7, fillColor: color.fill, fillOpacity: 0.2 };
+      },
+      onEachFeature: function(feature, layer) {
+        const p = feature.properties;
+        const typezone = (p.typezone || '').toUpperCase();
+        const info = PLU_COLORS[typezone] || { label: typezone };
+        layer.bindPopup(
+          '<div style="font-family:-apple-system,sans-serif;">' +
+          '<div style="font-weight:700;font-size:14px;margin-bottom:4px;">Zone ' + (p.libelle || typezone) + '</div>' +
+          '<div style="font-size:12px;color:#555;line-height:1.5;">' +
+            '<strong>Type :</strong> ' + info.label + ' (' + typezone + ')<br>' +
+            '<strong>Destination :</strong> ' + (p.destdomi || '-') + '<br>' +
+            '<strong>Document :</strong> ' + (p.idurba || '-') +
+          '</div></div>'
+        );
+      }
+    }).addTo(map);
+
+    reorderLayers();
+    pluStatus.textContent = features.length + ' zones';
+    document.getElementById('legendPLU').style.display = 'flex';
+  } catch (err) {
+    pluStatus.textContent = 'Erreur';
+    console.error('PLU error:', err);
+    togglePLU.checked = false;
+  }
+}
+
+// ========== BATIMENT OVERLAY ==========
+const toggleBati = document.getElementById('toggleBati');
+const batiStatus = document.getElementById('batiStatus');
+const batiFilterSection = document.getElementById('batiFilterSection');
+const applyBatiFilter = document.getElementById('applyBatiFilter');
+
+toggleBati.addEventListener('change', async () => {
+  if (toggleBati.checked) {
+    batiFilterSection.classList.add('visible');
+    await loadBati();
+    document.getElementById('legendBati').style.display = 'flex';
+  } else {
+    if (batiLayer) { map.removeLayer(batiLayer); batiLayer = null; }
+    batiFilterSection.classList.remove('visible');
+    batiStatus.textContent = '';
+    document.getElementById('legendBati').style.display = 'none';
+  }
+});
+
+applyBatiFilter.addEventListener('click', () => { if (cachedBati) renderBati(cachedBati); });
+
+async function loadBati() {
+  if (!rawData || !rawData.features.length) { batiStatus.textContent = 'Chargez d\'abord'; toggleBati.checked = false; batiFilterSection.classList.remove('visible'); return; }
+  batiStatus.textContent = 'Chargement...';
+
+  try {
+    const bbox = getBboxFromFeatures(rawData.features);
+    let allBati = [];
+    let startIndex = 0;
+    const batiPageSize = 5000;
+
+    while (true) {
+      const params = new URLSearchParams({
+        SERVICE: 'WFS', VERSION: '2.0.0', REQUEST: 'GetFeature',
+        TYPENAMES: 'BDTOPO_V3:batiment', OUTPUTFORMAT: 'application/json',
+        COUNT: batiPageSize, STARTINDEX: startIndex,
+        BBOX: bbox.lonlat + ',EPSG:4326'
+      });
+      const resp = await fetch(WFS_CADASTRE + '?' + params.toString());
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      const total = data.totalFeatures || data.numberMatched || 0;
+      const features = data.features || [];
+      if (features.length === 0) break;
+
+      allBati = allBati.concat(features);
+      startIndex += features.length;
+      batiStatus.textContent = allBati.length.toLocaleString('fr-FR') + ' / ' + total.toLocaleString('fr-FR') + ' bat.';
+      if (startIndex >= total) break;
+    }
+
+    cachedBati = allBati;
+    renderBati(cachedBati);
+  } catch (err) {
+    batiStatus.textContent = 'Erreur';
+    console.error('Bati error:', err);
+    toggleBati.checked = false;
+    batiFilterSection.classList.remove('visible');
+  }
+}
+
+// Compute polygon area in m2 from WGS84 coords (Shoelace + spherical correction)
+function computePolygonAreaM2(rings) {
+  let totalArea = 0;
+  for (let r = 0; r < rings.length; r++) {
+    const ring = rings[r];
+    let area = 0;
+    for (let i = 0; i < ring.length - 1; i++) {
+      const [lng1, lat1] = ring[i];
+      const [lng2, lat2] = ring[i + 1];
+      area += (lng2 - lng1) * Math.PI / 180 * (2 + Math.sin(lat1 * Math.PI / 180) + Math.sin(lat2 * Math.PI / 180));
+    }
+    area = Math.abs(area) * 6378137 * 6378137 / 2;
+    totalArea += (r === 0 ? area : -area);
+  }
+  return Math.abs(totalArea);
+}
+
+function getFeatureAreaM2(feature) {
+  if (feature._cachedArea !== undefined) return feature._cachedArea;
+  const geom = feature.geometry;
+  let area = 0;
+  if (geom.type === 'Polygon') {
+    area = computePolygonAreaM2(geom.coordinates);
+  } else if (geom.type === 'MultiPolygon') {
+    for (const poly of geom.coordinates) area += computePolygonAreaM2(poly);
+  }
+  feature._cachedArea = area;
+  return area;
+}
+
+function renderBati(features) {
+  const minB = parseInt(document.getElementById('minBati').value) || 0;
+  const maxB = document.getElementById('maxBati').value ? parseInt(document.getElementById('maxBati').value) : Infinity;
+  const filterUsage = document.getElementById('filterUsage').value;
+  const minEt = parseInt(document.getElementById('minEtages').value) || 0;
+  const maxEt = document.getElementById('maxEtages').value ? parseInt(document.getElementById('maxEtages').value) : Infinity;
+  const minLog = parseInt(document.getElementById('minLogements').value) || 0;
+  const maxLog = document.getElementById('maxLogements').value ? parseInt(document.getElementById('maxLogements').value) : Infinity;
+  const filterLegere = document.getElementById('filterLegere').value;
+
+  const hasFilter = minB > 0 || maxB < Infinity || filterUsage || minEt > 0 || maxEt < Infinity || minLog > 0 || maxLog < Infinity || filterLegere;
+
+  const filtered = hasFilter ? features.filter(f => {
+    const p = f.properties;
+    const s = getFeatureAreaM2(f);
+    if (s < minB || s > maxB) return false;
+    if (filterUsage && (p.usage_1 || '') !== filterUsage) return false;
+    const etages = typeof p.nombre_d_etages === 'number' ? p.nombre_d_etages : -1;
+    if (minEt > 0 && etages < minEt) return false;
+    if (maxEt < Infinity && (etages < 0 || etages > maxEt)) return false;
+    const logements = typeof p.nombre_de_logements === 'number' ? p.nombre_de_logements : -1;
+    if (minLog > 0 && logements < minLog) return false;
+    if (maxLog < Infinity && (logements < 0 || logements > maxLog)) return false;
+    if (filterLegere === 'true' && !p.construction_legere) return false;
+    if (filterLegere === 'false' && p.construction_legere) return false;
+    return true;
+  }) : features;
+
+  if (batiLayer) map.removeLayer(batiLayer);
+  batiLayer = L.geoJSON({ type: 'FeatureCollection', features: filtered }, {
+    style: { color: '#7c3aed', weight: 1.5, opacity: 0.8, fillColor: '#8b5cf6', fillOpacity: 0.35 },
+    onEachFeature: function(feature, layer) {
+      const p = feature.properties;
+      const surface = Math.round(getFeatureAreaM2(feature));
+      const hauteur = p.hauteur;
+      const usage = p.usage_1 || '-';
+      const nature = p.nature || '-';
+      const nbEtages = p.nombre_d_etages;
+      const nbLogements = p.nombre_de_logements;
+
+      let html = '<div style="font-family:-apple-system,sans-serif;min-width:180px;">' +
+        '<div style="font-weight:700;font-size:14px;margin-bottom:6px;">Batiment</div>' +
+        '<div style="font-size:12px;color:#555;line-height:1.6;">' +
+          '<strong>Emprise au sol :</strong> ' + surface.toLocaleString('fr-FR') + ' m\u00b2<br>' +
+          '<strong>Nature :</strong> ' + nature + '<br>' +
+          '<strong>Usage :</strong> ' + usage;
+      if (p.usage_2) html += ' / ' + p.usage_2;
+      html += '<br>';
+      if (typeof hauteur === 'number') html += '<strong>Hauteur :</strong> ' + hauteur + ' m<br>';
+      if (typeof nbEtages === 'number') html += '<strong>Etages :</strong> ' + nbEtages + '<br>';
+      if (typeof nbLogements === 'number') html += '<strong>Logements :</strong> ' + nbLogements + '<br>';
+      if (p.construction_legere) html += '<strong>Construction legere :</strong> oui<br>';
+      html += '</div></div>';
+
+      layer.bindPopup(html);
+    }
+  }).addTo(map);
+
+  reorderLayers();
+  batiStatus.textContent = filtered.length + (hasFilter ? '/' + features.length : '') + ' bat.';
+}
+
+// ========== Z-ORDER: PLU (bottom) < Parcelles (middle) < Batiments (top) ==========
+function reorderLayers() {
+  if (pluLayer) pluLayer.bringToBack();
+  if (parcelLayer) parcelLayer.setStyle(parcelLayer.options.style);
+  if (batiLayer) batiLayer.bringToFront();
+}
+
+// ========== HELPERS ==========
+function getBboxFromFeatures(features) {
+  let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+  for (const f of features) {
+    for (const poly of f.geometry.coordinates) {
+      for (const ring of poly) {
+        for (const pt of ring) {
+          if (pt[0] < minLng) minLng = pt[0];
+          if (pt[0] > maxLng) maxLng = pt[0];
+          if (pt[1] < minLat) minLat = pt[1];
+          if (pt[1] > maxLat) maxLat = pt[1];
+        }
+      }
+    }
+  }
+  return {
+    latlon: minLat + ',' + minLng + ',' + maxLat + ',' + maxLng,
+    lonlat: minLng + ',' + minLat + ',' + maxLng + ',' + maxLat
   };
-  reader.readAsText(file);
+}
+
+function computeCentroid(geometry) {
+  let sumLat = 0, sumLng = 0, count = 0;
+  for (const poly of geometry.coordinates) {
+    for (const ring of poly) {
+      for (const pt of ring) { sumLng += pt[0]; sumLat += pt[1]; count++; }
+    }
+  }
+  return { lat: (sumLat / count).toFixed(6), lng: (sumLng / count).toFixed(6) };
 }
 
 // ========== APPLY FILTERS ==========
 applyBtn.addEventListener('click', applyFilters);
-
 ['minSurface', 'maxSurface', 'exactSurface'].forEach(id => {
-  document.getElementById(id).addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && rawData) applyFilters();
-  });
+  document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter' && rawData) applyFilters(); });
 });
 
 function applyFilters() {
@@ -502,73 +885,56 @@ function applyFilters() {
   const maxVal = parseInt(document.getElementById('maxSurface').value) || Infinity;
   const exactVal = document.getElementById('exactSurface').value ? parseInt(document.getElementById('exactSurface').value) : null;
 
-  // Filter features
   const filtered = rawData.features.filter(f => {
     const c = f.properties.contenance || 0;
     return c >= minVal && c <= maxVal;
   });
-
   const highlighted = exactVal !== null ? filtered.filter(f => f.properties.contenance === exactVal) : [];
 
-  // Update stats
+  // Stats
   const statsEl = document.getElementById('stats');
   let statsHtml = 'Total parcelles : <span class="stat-value">' + rawData.features.length.toLocaleString('fr-FR') + '</span>';
-  statsHtml += '<br>Parcelles dans l\'intervalle : <span class="stat-value">' + filtered.length + '</span>';
+  statsHtml += ' &middot; Dans l\'intervalle : <span class="stat-value">' + filtered.length + '</span>';
   if (exactVal !== null) {
-    statsHtml += '<br>Parcelles \u00e0 <span class="stat-highlight">' + exactVal.toLocaleString('fr-FR') + ' m\u00b2</span> : <span class="stat-highlight">' + highlighted.length + '</span>';
+    statsHtml += ' &middot; <span class="stat-highlight">' + exactVal.toLocaleString('fr-FR') + ' m\u00b2 : ' + highlighted.length + '</span>';
   }
   statsEl.innerHTML = statsHtml;
   statsEl.classList.add('visible');
 
+  // Badge
+  document.getElementById('parcelleBadge').textContent = filtered.length + ' parcelles';
+
   // Legend
-  document.getElementById('legend').style.display = 'block';
+  document.getElementById('legend').classList.add('visible');
   const legendH = document.getElementById('legendHighlight');
   if (exactVal !== null && highlighted.length > 0) {
     legendH.style.display = 'flex';
-    document.getElementById('legendHighlightText').textContent = exactVal.toLocaleString('fr-FR') + ' m\u00b2 exactement (\u00d7' + highlighted.length + ')';
-  } else {
-    legendH.style.display = 'none';
-  }
+    document.getElementById('legendHighlightText').textContent = exactVal.toLocaleString('fr-FR') + ' m\u00b2 (\u00d7' + highlighted.length + ')';
+  } else { legendH.style.display = 'none'; }
 
-  // Update map
+  // Map
   if (parcelLayer) map.removeLayer(parcelLayer);
-
-  const geojson = { type: 'FeatureCollection', features: filtered };
   const highlightedIdus = new Set(highlighted.map(f => f.properties.idu));
 
-  parcelLayer = L.geoJSON(geojson, {
+  parcelLayer = L.geoJSON({ type: 'FeatureCollection', features: filtered }, {
     style: function(feature) {
       const isH = highlightedIdus.has(feature.properties.idu);
       return {
-        color: isH ? '#dc2626' : '#2563eb',
-        weight: isH ? 3.5 : 2,
-        opacity: 0.9,
-        fillColor: isH ? '#ef4444' : '#3b82f6',
-        fillOpacity: isH ? 0.45 : 0.25
+        color: isH ? '#dc2626' : '#2563eb', weight: isH ? 3.5 : 2, opacity: 0.9,
+        fillColor: isH ? '#ef4444' : '#3b82f6', fillOpacity: isH ? 0.45 : 0.25
       };
     },
     onEachFeature: function(feature, layer) {
       const p = feature.properties;
       const isH = highlightedIdus.has(p.idu);
-      const badge = isH
-        ? '<span style="display:inline-block;background:#fef2f2;color:#dc2626;font-size:11px;padding:2px 8px;border-radius:4px;margin-bottom:6px;">' + exactVal.toLocaleString('fr-FR') + ' m\u00b2</span><br>'
-        : '';
+      const badge = isH ? '<span style="display:inline-block;background:#fef2f2;color:#dc2626;font-size:11px;padding:2px 8px;border-radius:4px;margin-bottom:6px;">' + exactVal.toLocaleString('fr-FR') + ' m\u00b2</span><br>' : '';
 
-      // Compute centroid from geometry coordinates
-      const coords = feature.geometry.coordinates;
-      let sumLat = 0, sumLng = 0, count = 0;
-      for (const poly of coords) {
-        for (const ring of poly) {
-          for (const pt of ring) {
-            sumLng += pt[0]; sumLat += pt[1]; count++;
-          }
-        }
-      }
-      const cLat = (sumLat / count).toFixed(6);
-      const cLng = (sumLng / count).toFixed(6);
-      const streetViewUrl = 'https://www.google.com/maps/@' + cLat + ',' + cLng + ',3a,75y,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192';
+      const c = computeCentroid(feature.geometry);
+      const streetViewUrl = 'https://www.google.com/maps/@' + c.lat + ',' + c.lng + ',3a,75y,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192';
+      const gpuUrl = 'https://www.geoportail-urbanisme.gouv.fr/map/#pos=17/' + c.lat + '/' + c.lng;
+      const cerfaUrl = 'https://www.service-public.fr/particuliers/vosdroits/R2088';
 
-      const popup = '<div style="font-family:-apple-system,sans-serif;min-width:200px;">' +
+      const popup = '<div style="font-family:-apple-system,sans-serif;min-width:220px;">' +
         badge +
         '<div style="font-weight:700;font-size:15px;margin-bottom:6px;color:#1a1a1a;">Section ' + p.section + ' - N\u00b0' + p.numero + '</div>' +
         '<div style="font-size:13px;color:#555;line-height:1.6;">' +
@@ -576,28 +942,24 @@ function applyFilters() {
           '<strong>IDU :</strong> ' + p.idu + '<br>' +
           '<strong>Commune :</strong> ' + (p.nom_com || '-') +
         '</div>' +
-        '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e2e8f0;">' +
-          '<a href="' + streetViewUrl + '" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:13px;color:#2563eb;text-decoration:none;font-weight:500;">' +
-            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><path d="M12 8v8"/><circle cx="12" cy="19" r="3"/><path d="M6.5 9L12 16l5.5-7"/></svg>' +
-            'Google Street View' +
-          '</a>' +
-        '</div>' +
-        '</div>';
+        '<div class="popup-links">' +
+          '<a href="' + streetViewUrl + '" target="_blank">\ud83d\udccd Google Street View</a>' +
+          '<a href="' + gpuUrl + '" target="_blank">\ud83c\udfd7\ufe0f Geoportail Urbanisme (PLU)</a>' +
+          '<a href="' + cerfaUrl + '" target="_blank">\ud83d\udcdd Demande proprio (Cerfa 11565)</a>' +
+        '</div></div>';
+
       layer.bindPopup(popup);
       layer.on('mouseover', function() { this.setStyle({ fillOpacity: isH ? 0.7 : 0.5, weight: isH ? 5 : 4 }); });
       layer.on('mouseout', function() { parcelLayer.resetStyle(this); });
     }
   }).addTo(map);
 
-  if (filtered.length > 0) {
-    map.fitBounds(parcelLayer.getBounds(), { padding: [40, 40] });
-  }
+  if (filtered.length > 0) map.fitBounds(parcelLayer.getBounds(), { padding: [40, 40] });
 
-  // Results table
+  // Table
   const tbody = document.getElementById('resultsBody');
   const listEl = document.getElementById('resultsList');
   tbody.innerHTML = '';
-
   const sorted = [...filtered].sort((a, b) => a.properties.contenance - b.properties.contenance);
   sorted.forEach(f => {
     const p = f.properties;
@@ -606,17 +968,18 @@ function applyFilters() {
     if (isH) tr.classList.add('highlighted');
     tr.innerHTML = '<td>' + p.section + '</td><td>' + p.numero + '</td><td>' + (p.contenance || 0).toLocaleString('fr-FR') + '</td><td>' + p.idu + '</td>';
     tr.addEventListener('click', () => {
-      parcelLayer.eachLayer(layer => {
-        if (layer.feature && layer.feature.properties.idu === p.idu) {
-          map.fitBounds(layer.getBounds(), { padding: [60, 60], maxZoom: 18 });
-          layer.openPopup();
+      parcelLayer.eachLayer(l => {
+        if (l.feature && l.feature.properties.idu === p.idu) {
+          map.fitBounds(l.getBounds(), { padding: [60, 60], maxZoom: 18 });
+          l.openPopup();
         }
       });
     });
     tbody.appendChild(tr);
   });
-
   listEl.classList.toggle('visible', filtered.length > 0 && filtered.length <= 500);
+
+  reorderLayers();
 }
 </script>
 </body>
